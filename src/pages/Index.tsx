@@ -98,14 +98,6 @@ const Index = () => {
     }
 
     const voiceId = getVoiceId(line.voice);
-    if (!voiceId) {
-      toast({
-        title: "Voice ID Missing",
-        description: `Please enter the voice ID for ${line.voice === 'peter' ? 'Peter Griffin' : 'Stewie Griffin'}.`,
-        variant: "destructive"
-      });
-      return;
-    }
 
     // Set generating state
     setLines(prev => prev.map(l => 
@@ -273,17 +265,6 @@ const Index = () => {
                 {apiKey && (
                   <p className="text-sm text-green-600 mt-1">✓ API key saved locally</p>
                 )}
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 bg-blue-50 rounded border">
-                  <label className="block text-sm font-medium mb-1">Peter Griffin Voice</label>
-                  <p className="text-xs text-gray-600">ID: {VOICE_IDS.peter}</p>
-                </div>
-                <div className="p-3 bg-green-50 rounded border">
-                  <label className="block text-sm font-medium mb-1">Stewie Griffin Voice</label>
-                  <p className="text-xs text-gray-600">ID: {VOICE_IDS.stewie}</p>
-                </div>
               </div>
               
               <Button
