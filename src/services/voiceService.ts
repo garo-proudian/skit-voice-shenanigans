@@ -18,7 +18,18 @@ export const generateVoiceAudio = async ({ text, voiceId }: GenerateVoiceParams)
     throw new Error(`Voice generation failed: ${error.message}`);
   }
 
-  // Convert the ArrayBuffer response to a Blob
-  const audioBlob = new Blob([data], { type: 'audio/mpeg' });
-  return audioBlob;
+  // The Edge Function returns raw ArrayBuffer data
+  // We need to convert it to a proper Blob for audio playback
+  if (data instanceof ArrayBuffer) {
+    return new Blob([data], { type: 'audio/mpeg' });
+  }
+  
+  // If it's already a Blob, return it directly
+  if (data instanceof Blob) {
+    return data;
+  }
+  
+  // If it's neither, try to create a Blob from the data
+  console.warn('Unexpected data type from Edge Function:', typeof data);
+  return new Blob([data], { type: 'audio/mpeg' });
 };
