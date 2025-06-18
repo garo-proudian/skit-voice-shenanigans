@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,21 +22,40 @@ const VOICES = [
   { id: 'stewie', name: 'Stewie Griffin', description: 'The evil genius baby' }
 ];
 
+// Hardcoded voice IDs for your cloned voices
+const VOICE_IDS = {
+  peter: '1P7KOzutBXxu64xIbUwT',
+  stewie: 'EsC6WC6aufrhentvDBpL'
+};
+
 const Index = () => {
   const [lines, setLines] = useState<SkitLine[]>([
     { id: '1', text: 'Why are you messing with my code?', voice: 'peter' },
     { id: '2', text: 'Because your logic is from 2003.', voice: 'stewie' }
   ]);
   const [apiKey, setApiKey] = useState('');
-  const [peterVoiceId, setPeterVoiceId] = useState('');
-  const [stewieVoiceId, setStewieVoiceId] = useState('');
   const [playingLine, setPlayingLine] = useState<string | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const { toast } = useToast();
 
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('elevenlabs-api-key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+  }, []);
+
+  // Save API key to localStorage when it changes
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem('elevenlabs-api-key', apiKey);
+    }
+  }, [apiKey]);
+
   const getVoiceId = (voice: string): string => {
-    return voice === 'peter' ? peterVoiceId : stewieVoiceId;
+    return VOICE_IDS[voice as keyof typeof VOICE_IDS];
   };
 
   const addLine = () => {
@@ -125,7 +144,7 @@ const Index = () => {
       
       toast({
         title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate voice. Please check your API key and voice IDs.",
+        description: error instanceof Error ? error.message : "Failed to generate voice. Please check your API key.",
         variant: "destructive"
       });
     }
@@ -136,15 +155,6 @@ const Index = () => {
       toast({
         title: "API Key Required",
         description: "Please enter your ElevenLabs API key first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!peterVoiceId || !stewieVoiceId) {
-      toast({
-        title: "Voice IDs Required",
-        description: "Please enter both Peter and Stewie voice IDs first.",
         variant: "destructive"
       });
       return;
@@ -238,7 +248,7 @@ const Index = () => {
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Create hilarious conversations with your cloned Peter and Stewie voices! 
-            Enter your API key and voice IDs to get started.
+            Enter your API key to get started.
           </p>
         </div>
 
@@ -260,30 +270,25 @@ const Index = () => {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                 />
+                {apiKey && (
+                  <p className="text-sm text-green-600 mt-1">✓ API key saved locally</p>
+                )}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Peter Griffin Voice ID</label>
-                  <Input
-                    placeholder="Enter Peter's voice ID..."
-                    value={peterVoiceId}
-                    onChange={(e) => setPeterVoiceId(e.target.value)}
-                  />
+                <div className="p-3 bg-blue-50 rounded border">
+                  <label className="block text-sm font-medium mb-1">Peter Griffin Voice</label>
+                  <p className="text-xs text-gray-600">ID: {VOICE_IDS.peter}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Stewie Griffin Voice ID</label>
-                  <Input
-                    placeholder="Enter Stewie's voice ID..."
-                    value={stewieVoiceId}
-                    onChange={(e) => setStewieVoiceId(e.target.value)}
-                  />
+                <div className="p-3 bg-green-50 rounded border">
+                  <label className="block text-sm font-medium mb-1">Stewie Griffin Voice</label>
+                  <p className="text-xs text-gray-600">ID: {VOICE_IDS.stewie}</p>
                 </div>
               </div>
               
               <Button
                 onClick={generateAllVoices}
-                disabled={isGeneratingAll || !apiKey || !peterVoiceId || !stewieVoiceId}
+                disabled={isGeneratingAll || !apiKey}
                 className="bg-blue-600 hover:bg-blue-700 w-full"
               >
                 {isGeneratingAll ? 'Generating All Voices...' : 'Generate All Voices'}
@@ -421,7 +426,6 @@ const Index = () => {
           <CardContent className="text-blue-800">
             <ol className="list-decimal list-inside space-y-2">
               <li>Enter your ElevenLabs API key above</li>
-              <li>Enter the voice IDs for your cloned Peter and Stewie voices</li>
               <li>Write dialogue lines for your characters</li>
               <li>Select which voice (Peter or Stewie) should say each line</li>
               <li>Click "Generate" to create the audio using your cloned voices</li>
