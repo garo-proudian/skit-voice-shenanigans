@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Play, Pause, Plus, Trash2, Volume2 } from 'lucide-react';
-import { generateVoiceAudio } from '@/services/elevenLabsApi';
+import { generateVoiceAudio } from '@/services/voiceService';
 
 interface SkitLine {
   id: string;
@@ -33,26 +33,10 @@ const Index = () => {
     { id: '1', text: 'Why are you messing with my code?', voice: 'peter' },
     { id: '2', text: 'Because your logic is from 2003.', voice: 'stewie' }
   ]);
-  const [apiKey, setApiKey] = useState('');
   const [playingLine, setPlayingLine] = useState<string | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const { toast } = useToast();
-
-  // Load API key from localStorage on mount
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('elevenlabs-api-key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-  }, []);
-
-  // Save API key to localStorage when it changes
-  useEffect(() => {
-    if (apiKey) {
-      localStorage.setItem('elevenlabs-api-key', apiKey);
-    }
-  }, [apiKey]);
 
   const getVoiceId = (voice: string): string => {
     return VOICE_IDS[voice as keyof typeof VOICE_IDS];
@@ -78,15 +62,6 @@ const Index = () => {
   };
 
   const generateVoice = async (lineId: string) => {
-    if (!apiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your ElevenLabs API key first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     const line = lines.find(l => l.id === lineId);
     if (!line || !line.text.trim()) {
       toast({
@@ -109,8 +84,7 @@ const Index = () => {
       
       const audioBlob = await generateVoiceAudio({
         text: line.text,
-        voiceId: voiceId,
-        apiKey: apiKey
+        voiceId: voiceId
       });
 
       const audioUrl = URL.createObjectURL(audioBlob);
@@ -136,22 +110,13 @@ const Index = () => {
       
       toast({
         title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate voice. Please check your API key.",
+        description: error instanceof Error ? error.message : "Failed to generate voice. Please try again.",
         variant: "destructive"
       });
     }
   };
 
   const generateAllVoices = async () => {
-    if (!apiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your ElevenLabs API key first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     const linesToGenerate = lines.filter(line => line.text.trim() && !line.audioUrl);
     if (linesToGenerate.length === 0) {
       toast({
@@ -240,55 +205,26 @@ const Index = () => {
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Create hilarious conversations with your cloned Peter and Stewie voices! 
-            Enter your API key to get started.
+            Your API key is securely stored and managed by our backend.
           </p>
         </div>
 
-        {/* API Configuration */}
+        {/* Quick Actions */}
         <Card className="mb-6 border-yellow-200 bg-yellow-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Volume2 className="h-5 w-5" />
-              ElevenLabs API Configuration
+              Voice Generation
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">ElevenLabs API Key</label>
-                <Input
-                  type="password"
-                  placeholder="Enter your ElevenLabs API key..."
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
-                {apiKey && (
-                  <p className="text-sm text-green-600 mt-1">✓ API key saved locally</p>
-                )}
-              </div>
-              
-              <Button
-                onClick={generateAllVoices}
-                disabled={isGeneratingAll || !apiKey}
-                className="bg-blue-600 hover:bg-blue-700 w-full"
-              >
-                {isGeneratingAll ? 'Generating All Voices...' : 'Generate All Voices'}
-              </Button>
-            </div>
-            
-            {!apiKey && (
-              <p className="text-sm text-gray-600">
-                Get your API key from{' '}
-                <a 
-                  href="https://elevenlabs.io" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  ElevenLabs
-                </a>
-              </p>
-            )}
+          <CardContent>
+            <Button
+              onClick={generateAllVoices}
+              disabled={isGeneratingAll}
+              className="bg-blue-600 hover:bg-blue-700 w-full"
+            >
+              {isGeneratingAll ? 'Generating All Voices...' : 'Generate All Voices'}
+            </Button>
           </CardContent>
         </Card>
 
@@ -406,11 +342,11 @@ const Index = () => {
           </CardHeader>
           <CardContent className="text-blue-800">
             <ol className="list-decimal list-inside space-y-2">
-              <li>Enter your ElevenLabs API key above</li>
               <li>Write dialogue lines for your characters</li>
               <li>Select which voice (Peter or Stewie) should say each line</li>
               <li>Click "Generate" to create the audio using your cloned voices</li>
               <li>Play individual lines or download the audio files</li>
+              <li>Your API key is securely managed by our backend - no need to enter it!</li>
             </ol>
           </CardContent>
         </Card>
