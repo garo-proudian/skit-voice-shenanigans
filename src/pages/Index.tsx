@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,12 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Play, Pause, Plus, Trash2, Volume2 } from 'lucide-react';
+import { generateVoiceAudio } from '@/services/elevenLabsApi';
 
 interface SkitLine {
   id: string;
   text: string;
   voice: string;
   audioUrl?: string;
+  audioBlob?: Blob;
   isGenerating?: boolean;
 }
 
@@ -27,9 +28,16 @@ const Index = () => {
     { id: '2', text: 'Because your logic is from 2003.', voice: 'stewie' }
   ]);
   const [apiKey, setApiKey] = useState('');
+  const [peterVoiceId, setPeterVoiceId] = useState('');
+  const [stewieVoiceId, setStewieVoiceId] = useState('');
   const [playingLine, setPlayingLine] = useState<string | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const { toast } = useToast();
+
+  const getVoiceId = (voice: string): string => {
+    return voice === 'peter' ? peterVoiceId : stewieVoiceId;
+  };
 
   const addLine = () => {
     const newLine: SkitLine = {
@@ -70,22 +78,38 @@ const Index = () => {
       return;
     }
 
+    const voiceId = getVoiceId(line.voice);
+    if (!voiceId) {
+      toast({
+        title: "Voice ID Missing",
+        description: `Please enter the voice ID for ${line.voice === 'peter' ? 'Peter Griffin' : 'Stewie Griffin'}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Set generating state
     setLines(prev => prev.map(l => 
       l.id === lineId ? { ...l, isGenerating: true } : l
     ));
 
     try {
-      // For demo purposes, we'll simulate the API call
-      // In a real implementation, you would call the ElevenLabs API here
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`Generating voice for: "${line.text}" using voice ID: ${voiceId}`);
       
-      // Simulate successful generation
+      const audioBlob = await generateVoiceAudio({
+        text: line.text,
+        voiceId: voiceId,
+        apiKey: apiKey
+      });
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
       setLines(prev => prev.map(l => 
         l.id === lineId ? { 
           ...l, 
           isGenerating: false, 
-          audioUrl: `demo-audio-${lineId}` 
+          audioUrl: audioUrl,
+          audioBlob: audioBlob
         } : l
       ));
       
@@ -94,13 +118,14 @@ const Index = () => {
         description: "Your audio line is ready to play.",
       });
     } catch (error) {
+      console.error('Voice generation error:', error);
       setLines(prev => prev.map(l => 
         l.id === lineId ? { ...l, isGenerating: false } : l
       ));
       
       toast({
         title: "Generation Failed",
-        description: "Failed to generate voice. Please check your API key and try again.",
+        description: error instanceof Error ? error.message : "Failed to generate voice. Please check your API key and voice IDs.",
         variant: "destructive"
       });
     }
@@ -111,6 +136,15 @@ const Index = () => {
       toast({
         title: "API Key Required",
         description: "Please enter your ElevenLabs API key first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!peterVoiceId || !stewieVoiceId) {
+      toast({
+        title: "Voice IDs Required",
+        description: "Please enter both Peter and Stewie voice IDs first.",
         variant: "destructive"
       });
       return;
@@ -138,17 +172,35 @@ const Index = () => {
     const line = lines.find(l => l.id === lineId);
     if (!line?.audioUrl) return;
 
+    // Stop current audio if playing
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+
     if (playingLine === lineId) {
       setPlayingLine(null);
+      setCurrentAudio(null);
     } else {
+      const audio = new Audio(line.audioUrl);
+      audio.onended = () => {
+        setPlayingLine(null);
+        setCurrentAudio(null);
+      };
+      audio.onerror = () => {
+        console.error('Audio playback error');
+        setPlayingLine(null);
+        setCurrentAudio(null);
+      };
+      
+      audio.play();
       setPlayingLine(lineId);
-      // In a real implementation, you would play the actual audio here
-      setTimeout(() => setPlayingLine(null), 3000); // Simulate 3-second audio
+      setCurrentAudio(audio);
     }
   };
 
   const downloadSkit = () => {
-    const generatedLines = lines.filter(line => line.audioUrl);
+    const generatedLines = lines.filter(line => line.audioBlob);
     if (generatedLines.length === 0) {
       toast({
         title: "No Audio to Download",
@@ -158,9 +210,21 @@ const Index = () => {
       return;
     }
 
+    // For now, download the first audio file
+    // In the future, we could combine all audio files
+    const firstLine = generatedLines[0];
+    const url = URL.createObjectURL(firstLine.audioBlob!);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'voice-skit.mp3';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
     toast({
       title: "Download Started",
-      description: "Your skit is being prepared for download...",
+      description: "Your audio file is being downloaded!",
     });
   };
 
@@ -173,12 +237,12 @@ const Index = () => {
             🎭 AI Voice Skit Generator
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Create hilarious conversations with Peter and Stewie! Write your script, 
-            select voices, and bring your comedy to life.
+            Create hilarious conversations with your cloned Peter and Stewie voices! 
+            Enter your API key and voice IDs to get started.
           </p>
         </div>
 
-        {/* API Key Input */}
+        {/* API Configuration */}
         <Card className="mb-6 border-yellow-200 bg-yellow-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -186,25 +250,48 @@ const Index = () => {
               ElevenLabs API Configuration
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex gap-4">
-              <Input
-                type="password"
-                placeholder="Enter your ElevenLabs API key..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="flex-1"
-              />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">ElevenLabs API Key</label>
+                <Input
+                  type="password"
+                  placeholder="Enter your ElevenLabs API key..."
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Peter Griffin Voice ID</label>
+                  <Input
+                    placeholder="Enter Peter's voice ID..."
+                    value={peterVoiceId}
+                    onChange={(e) => setPeterVoiceId(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Stewie Griffin Voice ID</label>
+                  <Input
+                    placeholder="Enter Stewie's voice ID..."
+                    value={stewieVoiceId}
+                    onChange={(e) => setStewieVoiceId(e.target.value)}
+                  />
+                </div>
+              </div>
+              
               <Button
                 onClick={generateAllVoices}
-                disabled={isGeneratingAll || !apiKey}
-                className="bg-blue-600 hover:bg-blue-700"
+                disabled={isGeneratingAll || !apiKey || !peterVoiceId || !stewieVoiceId}
+                className="bg-blue-600 hover:bg-blue-700 w-full"
               >
-                {isGeneratingAll ? 'Generating...' : 'Generate All'}
+                {isGeneratingAll ? 'Generating All Voices...' : 'Generate All Voices'}
               </Button>
             </div>
+            
             {!apiKey && (
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-gray-600">
                 Get your API key from{' '}
                 <a 
                   href="https://elevenlabs.io" 
@@ -334,10 +421,11 @@ const Index = () => {
           <CardContent className="text-blue-800">
             <ol className="list-decimal list-inside space-y-2">
               <li>Enter your ElevenLabs API key above</li>
+              <li>Enter the voice IDs for your cloned Peter and Stewie voices</li>
               <li>Write dialogue lines for your characters</li>
               <li>Select which voice (Peter or Stewie) should say each line</li>
-              <li>Click "Generate" to create the audio</li>
-              <li>Play individual lines or download the full skit</li>
+              <li>Click "Generate" to create the audio using your cloned voices</li>
+              <li>Play individual lines or download the audio files</li>
             </ol>
           </CardContent>
         </Card>
