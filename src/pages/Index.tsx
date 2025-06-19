@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -166,7 +165,7 @@ const Index = () => {
     }
   };
 
-  const downloadSkit = () => {
+  const downloadSkit = async () => {
     const generatedLines = lines.filter(line => line.audioBlob);
     if (generatedLines.length === 0) {
       toast({
@@ -177,22 +176,112 @@ const Index = () => {
       return;
     }
 
-    // For now, download the first audio file
-    // In the future, we could combine all audio files
-    const firstLine = generatedLines[0];
-    const url = URL.createObjectURL(firstLine.audioBlob!);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'voice-skit.mp3';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      // Create a new audio context for combining audio files
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffers: AudioBuffer[] = [];
 
-    toast({
-      title: "Download Started",
-      description: "Your audio file is being downloaded!",
-    });
+      // Load all audio blobs into audio buffers
+      for (const line of generatedLines) {
+        const arrayBuffer = await line.audioBlob!.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        audioBuffers.push(audioBuffer);
+      }
+
+      if (audioBuffers.length === 0) {
+        throw new Error('No valid audio data found');
+      }
+
+      // Calculate total length and create combined buffer
+      const totalLength = audioBuffers.reduce((sum, buffer) => sum + buffer.length, 0);
+      const combinedBuffer = audioContext.createBuffer(
+        audioBuffers[0].numberOfChannels,
+        totalLength,
+        audioBuffers[0].sampleRate
+      );
+
+      // Copy all audio data into the combined buffer
+      let offset = 0;
+      for (const buffer of audioBuffers) {
+        for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+          const channelData = buffer.getChannelData(channel);
+          combinedBuffer.getChannelData(channel).set(channelData, offset);
+        }
+        offset += buffer.length;
+      }
+
+      // Convert the combined buffer back to a blob
+      const length = combinedBuffer.length;
+      const sampleRate = combinedBuffer.sampleRate;
+      const buffer = new ArrayBuffer(44 + length * 2);
+      const view = new DataView(buffer);
+
+      // Write WAV header
+      const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + length * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, length * 2, true);
+
+      // Write audio data
+      const channelData = combinedBuffer.getChannelData(0);
+      let offset2 = 44;
+      for (let i = 0; i < length; i++) {
+        const sample = Math.max(-1, Math.min(1, channelData[i]));
+        view.setInt16(offset2, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        offset2 += 2;
+      }
+
+      // Create blob and download
+      const audioBlob = new Blob([buffer], { type: 'audio/wav' });
+      const url = URL.createObjectURL(audioBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'complete-voice-skit.wav';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download Started",
+        description: `Combined ${generatedLines.length} audio lines into one file!`,
+      });
+
+    } catch (error) {
+      console.error('Error combining audio files:', error);
+      
+      // Fallback: Download all files individually
+      generatedLines.forEach((line, index) => {
+        const url = URL.createObjectURL(line.audioBlob!);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `voice-line-${index + 1}.mp3`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      toast({
+        title: "Individual Downloads",
+        description: `Downloaded ${generatedLines.length} separate audio files.`,
+      });
+    }
   };
 
   return (
