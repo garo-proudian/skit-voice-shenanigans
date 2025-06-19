@@ -16,8 +16,8 @@ export const generateVoiceAudio = async ({ text, voiceId }: GenerateVoiceParams)
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabase.supabaseKey}`,
-      'apikey': supabase.supabaseKey,
+      'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlaXh0d3J6d2Zwc2FmYmhlenloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMzk3NDMsImV4cCI6MjA2NTgxNTc0M30.f1q-ySv4lfNDPPcN3FN1QKPMMqBwMo2-sRuBrkeuev8`,
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlaXh0d3J6d2Zwc2FmYmhlenloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMzk3NDMsImV4cCI6MjA2NTgxNTc0M30.f1q-ySv4lfNDPPcN3FN1QKPMMqBwMo2-sRuBrkeuev8',
     },
     body: JSON.stringify({ text, voiceId })
   });
