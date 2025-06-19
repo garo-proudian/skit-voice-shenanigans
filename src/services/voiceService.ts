@@ -4,10 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 interface GenerateVoiceParams {
   text: string;
   voiceId: string;
+  previousText?: string;
 }
 
-export const generateVoiceAudio = async ({ text, voiceId }: GenerateVoiceParams): Promise<Blob> => {
+export const generateVoiceAudio = async ({ text, voiceId, previousText }: GenerateVoiceParams): Promise<Blob> => {
   console.log(`Calling Edge Function to generate voice for: "${text}" using voice ID: ${voiceId}`);
+  if (previousText) {
+    console.log(`With previous context: "${previousText}"`);
+  }
   
   // Make a direct fetch call to the Edge Function to handle binary data properly
   const { data: { session } } = await supabase.auth.getSession();
@@ -19,7 +23,7 @@ export const generateVoiceAudio = async ({ text, voiceId }: GenerateVoiceParams)
       'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlaXh0d3J6d2Zwc2FmYmhlenloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMzk3NDMsImV4cCI6MjA2NTgxNTc0M30.f1q-ySv4lfNDPPcN3FN1QKPMMqBwMo2-sRuBrkeuev8`,
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlaXh0d3J6d2Zwc2FmYmhlenloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMzk3NDMsImV4cCI6MjA2NTgxNTc0M30.f1q-ySv4lfNDPPcN3FN1QKPMMqBwMo2-sRuBrkeuev8',
     },
-    body: JSON.stringify({ text, voiceId })
+    body: JSON.stringify({ text, voiceId, previousText })
   });
 
   if (!response.ok) {

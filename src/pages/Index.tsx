@@ -72,6 +72,11 @@ const Index = () => {
     }
 
     const voiceId = getVoiceId(line.voice);
+    
+    // Get the previous line's text for context
+    const currentIndex = lines.findIndex(l => l.id === lineId);
+    const previousLine = currentIndex > 0 ? lines[currentIndex - 1] : null;
+    const previousText = previousLine?.text?.trim() || undefined;
 
     // Set generating state
     setLines(prev => prev.map(l => 
@@ -83,7 +88,8 @@ const Index = () => {
       
       const audioBlob = await generateVoiceAudio({
         text: line.text,
-        voiceId: voiceId
+        voiceId: voiceId,
+        previousText: previousText
       });
 
       const audioUrl = URL.createObjectURL(audioBlob);
