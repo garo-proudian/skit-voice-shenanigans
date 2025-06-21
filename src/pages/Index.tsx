@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Play, Pause, Plus, Trash2, Volume2 } from 'lucide-react';
+import { Download, Play, Pause, Plus, Trash2, Volume2, Video } from 'lucide-react';
 import { generateVoiceAudio } from '@/services/voiceService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SkitLine {
   id: string;
@@ -290,6 +291,58 @@ const Index = () => {
     }
   };
 
+  const downloadVideo = async () => {
+    const generatedLines = lines.filter(line => line.audioBlob);
+    if (generatedLines.length === 0) {
+      toast({
+        title: "No Audio to Merge",
+        description: "Generate some voice lines first!",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if user has a default video
+    try {
+      const { data: defaultVideo } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('is_default', true)
+        .single();
+
+      if (!defaultVideo) {
+        toast({
+          title: "No Default Video",
+          description: "Please upload and set a default video in Manage Videos first.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Simulate video processing for now
+      toast({
+        title: "Processing Video...",
+        description: "Your video is being prepared. This is a placeholder for now.",
+      });
+
+      // Simulate processing time
+      setTimeout(() => {
+        toast({
+          title: "Video Ready!",
+          description: "Video processing will be implemented in the next update.",
+        });
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error checking for default video:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check for default video. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
       <div className="container mx-auto px-4 py-8">
@@ -341,6 +394,15 @@ const Index = () => {
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Download Skit
+                </Button>
+                <Button 
+                  onClick={downloadVideo}
+                  variant="outline" 
+                  size="sm"
+                  className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                >
+                  <Video className="h-4 w-4 mr-1" />
+                  Download Video
                 </Button>
               </div>
             </CardTitle>
@@ -441,6 +503,7 @@ const Index = () => {
               <li>Select which voice (Peter or Stewie) should say each line</li>
               <li>Click "Generate" to create the audio using your cloned voices</li>
               <li>Play individual lines or download the audio files</li>
+              <li>Use "Download Video" to combine audio with your Minecraft background video</li>
               <li>Your API key is securely managed by our backend - no need to enter it!</li>
             </ol>
           </CardContent>
