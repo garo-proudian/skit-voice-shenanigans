@@ -23,7 +23,7 @@ const ManageVideos = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch user's videos
+  // Fetch videos without user filtering
   const { data: videos = [], isLoading } = useQuery({
     queryKey: ['videos'],
     queryFn: async () => {
@@ -37,26 +37,22 @@ const ManageVideos = () => {
     }
   });
 
-  // Upload video mutation
+  // Upload video mutation without authentication
   const uploadVideoMutation = useMutation({
     mutationFn: async (file: File) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const fileName = `${user.id}/${Date.now()}_${file.name}`;
+      const fileName = `${Date.now()}_${file.name}`;
       
-      // Upload to storage
+      // Upload to storage without user folder structure
       const { error: uploadError } = await supabase.storage
         .from('videos')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Save video metadata to database
+      // Save video metadata to database without user_id
       const { data, error: dbError } = await supabase
         .from('videos')
         .insert({
-          user_id: user.id,
           filename: file.name,
           file_path: fileName,
           file_size: file.size,
