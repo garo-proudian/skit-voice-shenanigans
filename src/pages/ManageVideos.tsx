@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,9 +76,21 @@ const ManageVideos = () => {
     },
     onError: (error) => {
       console.error('Upload error:', error);
+      let errorMessage = "Failed to upload video.";
+      
+      // Check for specific error types
+      if (error && typeof error === 'object' && 'statusCode' in error) {
+        const statusCode = (error as any).statusCode;
+        if (statusCode === '413' || statusCode === 413) {
+          errorMessage = "Video file is too large. Please try a smaller file (under 50MB).";
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Upload Failed",
-        description: error instanceof Error ? error.message : "Failed to upload video.",
+        description: errorMessage,
         variant: "destructive"
       });
       setUploading(false);
@@ -157,10 +170,11 @@ const ManageVideos = () => {
       return;
     }
 
-    if (file.size > 100 * 1024 * 1024) { // 100MB limit
+    // Reduced file size limit to 50MB to avoid Supabase limits
+    if (file.size > 50 * 1024 * 1024) {
       toast({
         title: "File Too Large",
-        description: "Please select a video smaller than 100MB.",
+        description: "Please select a video smaller than 50MB.",
         variant: "destructive"
       });
       return;
