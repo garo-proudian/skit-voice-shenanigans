@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,7 +56,8 @@ const ManageVideos = () => {
           file_path: fileName,
           file_size: file.size,
           mime_type: file.type,
-          is_default: videos.length === 0 // First video becomes default
+          is_default: videos.length === 0, // First video becomes default
+          user_id: null // Explicitly set to null since it's now optional
         })
         .select()
         .single();

@@ -19,7 +19,7 @@ export type Database = {
           is_default: boolean | null
           mime_type: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -30,7 +30,7 @@ export type Database = {
           is_default?: boolean | null
           mime_type?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -41,7 +41,7 @@ export type Database = {
           is_default?: boolean | null
           mime_type?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
